@@ -56,9 +56,10 @@ thead th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:500
 thead th.ch{writing-mode:vertical-rl;transform:rotate(180deg);text-align:left;height:118px;white-space:nowrap;padding:6px 0;cursor:default}
 thead th.ch .cl{opacity:.75;font-size:11px}
 th.l,td.l{text-align:left}
+thead th.l{padding-left:8px;padding-right:8px}
 td.id{font-family:var(--mono);font-weight:600;padding:3px 8px;white-space:nowrap;cursor:help;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
 td.rq{padding:3px 8px;min-width:180px;max-width:300px;font-size:12.5px;cursor:help}
-td.rq .mp{color:var(--muted);font-size:11.5px}
+td.mp{padding:3px 8px;min-width:120px;max-width:180px;font-size:12px;color:var(--muted);cursor:help}
 td.pg{font-family:var(--mono);font-size:12px;padding:3px 8px;white-space:nowrap}
 td.st{padding:3px 6px;white-space:nowrap}
 .chip{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;letter-spacing:.02em}
@@ -137,7 +138,7 @@ const T = {
     parse:"Read save", open:"Open file…", demo:"Show example",
     lg_ok:"counted", lg_click:"requirement met, click the star", lg_map:"requirement met, enter the map",
     lg_unk:"event, can't be checked from the save", lg_no:"requirement not met", lg_na:"constellation complete", hide:"hide complete",
-    th_star:"Star", th_req:"Requirement", th_have:"Have", th_status:"Status",
+    th_star:"Star", th_loc:"Location", th_req:"Requirement", th_have:"Have", th_status:"Status",
     st_done:"complete", st_ready:"click to complete", st_click:"no fighting needed", st_open:n=>`${n} more needed`,
     s_done:"constellations complete", s_pts:"star chart points", s_click:"can be finished without fighting",
     players:n=>`${n} char.`, pts:"pts", letter:"letter", lv:"lv",
@@ -159,7 +160,7 @@ const T = {
     parse:"Разобрать", open:"Открыть файл…", demo:"Показать пример",
     lg_ok:"засчитан", lg_click:"условие есть, кликнуть звезду", lg_map:"условие есть, зайти на карту",
     lg_unk:"событие, по сохранению не проверить", lg_no:"условие не выполнено", lg_na:"созвездие собрано", hide:"скрыть собранные",
-    th_star:"Звезда", th_req:"Требование", th_have:"Есть", th_status:"Статус",
+    th_star:"Звезда", th_loc:"Локация", th_req:"Требование", th_have:"Есть", th_status:"Статус",
     st_done:"собрано", st_ready:"кликнуть, чтобы закрыть", st_click:"закрывается без боёв", st_open:n=>`не хватает ${n}`,
     s_done:"созвездий собрано", s_pts:"очков звёздной карты", s_click:"можно закрыть без боёв",
     players:n=>`${n} перс.`, pts:"очк.", letter:"буква", lv:"ур.",
@@ -234,7 +235,7 @@ function render(data){
   const hide = $("#hideDone").checked;
   const nm = (c, n) => c.name || L.char(n + 1);
   let doneN = 0, pts = 0, ptsAll = 0, clickable = [];
-  let h = `<thead><tr><th class="l" style="padding-left:8px">${L.th_star}</th><th class="l">${L.th_req}</th><th>${L.th_have}</th><th class="l">${L.th_status}</th>`;
+  let h = `<thead><tr><th class="l" style="padding-left:8px">${L.th_star}</th><th class="l">${L.th_loc}</th><th class="l">${L.th_req}</th><th>${L.th_have}</th><th class="l">${L.th_status}</th>`;
   chars.forEach((c, n) => { h += `<th class="ch" data-tip="${esc(nm(c,n))}|${esc(titleCase(CLASS[c.cls]||"?"))} · ${L.lv} ${c.lv[0]||0} · ${L.letter} «${c.letter}»">${n+1}. ${esc(nm(c,n))} <span class="cl">${c.lv[0]||0}</span></th>`; });
   h += `</tr></thead><tbody>`;
   let lastW = "";
@@ -251,12 +252,13 @@ function render(data){
     else if (have + can >= st.need) { chip = `<span class="chip click">${L.st_click}</span>`; clickable.push(st.id); }
     else chip = `<span class="chip open">${L.st_open(st.need - have)}</span>`;
     const w = ru ? st.w : st.w_en;
-    if (w !== lastW) { lastW = w; h += `<tr class="band"><td colspan="${4 + chars.length}">${w}<small>${esc(st.region)}</small></td></tr>`; }
+    if (w !== lastW) { lastW = w; h += `<tr class="band"><td colspan="${5 + chars.length}">${w}<small>${esc(st.region)}</small></td></tr>`; }
     if (hide && done) continue;
     const req = ru ? st.req : st.req_en, loc = ru ? st.loc : st.loc_en;
     const tip = `${st.id} · ${st.map}|${loc}|${st.en} · ${st.pts} ${L.pts}|${st.id}`;
     h += `<tr class="${done ? "isdone" : ""}"><td class="id l" data-tip="${esc(tip)}">${st.id}</td>`
-      + `<td class="rq l" data-tip="${esc(tip)}">${esc(req)}, ${L.players(st.need)} <span class="mp">· ${esc(st.map)}</span></td>`
+      + `<td class="mp l" data-tip="${esc(tip)}">${esc(st.map)}</td>`
+      + `<td class="rq l" data-tip="${esc(tip)}">${esc(req)}, ${L.players(st.need)}</td>`
       + `<td class="pg">${have}/${st.need}</td><td class="st l">${chip}</td>`;
     cells.forEach((x, n) => { h += `<td class="c"><span class="s-${x[0]}" data-tip="${esc(nm(chars[n],n))} · ${st.id}|${esc(x[2])}|${esc(loc)}|${st.id}">${x[1]}</span></td>`; });
     h += `</tr>`;
