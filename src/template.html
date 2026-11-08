@@ -75,7 +75,15 @@ tr.isdone td{background:var(--done-row)} tr.isdone td.rq{color:var(--muted)}
 #tip{position:fixed;z-index:20;max-width:300px;background:var(--ink);color:var(--bg);border-radius:6px;padding:8px 10px;font-size:12.5px;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgb(0 0 0 / .25)}
 #tip b{font-family:var(--display);font-size:14px}
 #tip .t{opacity:.75;font-size:11.5px}
-#tip img{display:block;width:160px;height:160px;border-radius:4px;margin:2px 0 6px;image-rendering:pixelated;background:var(--muted)}
+#tip{width:316px;max-width:calc(100vw - 16px)}
+#tip svg{display:block;width:100%;height:auto;border-radius:4px;margin:6px 0 4px;background:var(--muted)}
+#tip .loc{font-size:12px;margin-bottom:6px}
+#tip .loc b{font-family:var(--body);font-size:12.5px}
+#tip .media{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+#tip .shot{display:block;width:120px;height:120px;flex:none;border-radius:4px;image-rendering:pixelated;background:var(--muted)}
+#tip .mobs{display:flex;flex-direction:column;gap:6px;min-width:0}
+#tip .mob{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:11.5px;opacity:.9}
+#tip .mob img{max-width:100%;max-height:64px;image-rendering:pixelated}
 #tip .src{opacity:.55;font-size:10.5px;margin-top:4px}
 .foot{font-size:12.5px;color:var(--muted);max-width:80ch;margin:0}
 .foot a{color:inherit}
@@ -121,6 +129,7 @@ tr.isdone td{background:var(--done-row)} tr.isdone td.rq{color:var(--muted)}
 <script>
 const STARS = __DATA__;
 const SAMPLE = __SAMPLE__;
+const DOTS = __DOTS__;
 const T = {
   en: {
     title:"IdleOn Star Chart", subtitle:"constellations per character",
@@ -139,7 +148,7 @@ const T = {
     trap:"Trapping", cook:"Cooking",
     c_beg_ok:c=>`${c} fits: defeat Efaunt`, c_beg_no:c=>`${c} is not a Beginner`,
     c_afk:h=>`Claim a single AFK session of ${h}+ h on this map`, c_ev:"Event: counts the moment you do it",
-    char:n=>`Character ${n}`, imgsrc:"Screenshot: idleon.wiki, CC BY-NC 3.0",
+    char:n=>`Character ${n}`, imgsrc:"Images: idleon.wiki, CC BY-NC 3.0", location:"Location",
     e_nokey:"There is no SSprog key in this JSON. Paste the full raw save export.", e_nochar:"No characters found (keys Lv0_0, Lv0_1…).",
     e_fail:"Couldn't read the save: ", ok_n:n=>`Read ${n} characters.`, ok_demo:"Example save with 10 characters.", ok_saved:"Loaded the last save you pasted.",
     foot:'A character is counted only when they click the star (level and "reach this star"), enter the map (Trapping and Cooking), claim AFK on that map, or do the event. The constellation itself also completes on a star click once enough characters are counted. Star names, locations and screenshots: <a href="https://idleon.wiki/wiki/Constellation_Locations" target="_blank" rel="noopener">IdleOn MMO Wiki</a> (CC BY-NC 3.0); requirements come from the game code. Your save never leaves the browser. <a href="https://github.com/StimDesu/idleon-star-chart" target="_blank" rel="noopener">Source on GitHub</a>.'
@@ -161,7 +170,7 @@ const T = {
     trap:"Трапперство", cook:"Кулинария",
     c_beg_ok:c=>`${c} подходит: убить Эфаунта`, c_beg_no:c=>`${c} не новичок`,
     c_afk:h=>`Собрать одну AFK-сессию от ${h} ч на этой карте`, c_ev:"Событие: засчитается, когда выполните",
-    char:n=>`Персонаж ${n}`, imgsrc:"Скриншот: idleon.wiki, CC BY-NC 3.0",
+    char:n=>`Персонаж ${n}`, imgsrc:"Картинки: idleon.wiki, CC BY-NC 3.0", location:"Локация",
     e_nokey:"В JSON нет ключа SSprog. Нужен полный сырой экспорт сохранения.", e_nochar:"Не нашёл персонажей (ключи Lv0_0, Lv0_1…).",
     e_fail:"Не получилось разобрать: ", ok_n:n=>`Разобрано: ${n} персонажей.`, ok_demo:"Пример сохранения с 10 персонажами.", ok_saved:"Загружено последнее вставленное сохранение.",
     foot:'Персонаж засчитывается, только когда кликнет по звезде (уровень и «дойти до звезды»), зайдёт на карту (трапперство и кулинария), соберёт AFK на этой карте или выполнит событие. Само созвездие закрывается тоже кликом по звезде, когда набралось нужное число персонажей. Названия, места и скриншоты звёзд: <a href="https://idleon.wiki/wiki/Constellation_Locations" target="_blank" rel="noopener">IdleOn MMO Wiki</a> (CC BY-NC 3.0), требования из кода игры. Сохранение никуда не отправляется. <a href="https://github.com/StimDesu/idleon-star-chart" target="_blank" rel="noopener">Исходники на GitHub</a>.'
@@ -249,7 +258,7 @@ function render(data){
     h += `<tr class="${done ? "isdone" : ""}"><td class="id l" data-tip="${esc(tip)}">${st.id}</td>`
       + `<td class="rq l" data-tip="${esc(tip)}">${esc(req)}, ${L.players(st.need)} <span class="mp">· ${esc(st.map)}</span></td>`
       + `<td class="pg">${have}/${st.need}</td><td class="st l">${chip}</td>`;
-    cells.forEach((x, n) => { h += `<td class="c"><span class="s-${x[0]}" data-tip="${esc(nm(chars[n],n))} · ${st.id}|${esc(x[2])}|${esc(st.map)} · ${esc(loc)}|${st.id}">${x[1]}</span></td>`; });
+    cells.forEach((x, n) => { h += `<td class="c"><span class="s-${x[0]}" data-tip="${esc(nm(chars[n],n))} · ${st.id}|${esc(x[2])}|${esc(loc)}|${st.id}">${x[1]}</span></td>`; });
     h += `</tr>`;
   }
   $("#tbl").innerHTML = h + `</tbody>`;
@@ -277,12 +286,26 @@ $("#hideDone").addEventListener("change", () => { if (current) render(current); 
 document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; store.set("ss-lang", lang); applyLang(); }));
 
 const tip = $("#tip");
+const BY_ID = Object.fromEntries(STARS.map(s => [s.id, s]));
+function starMedia(st){
+  if (!st) return "";
+  const a = st.area || {};
+  let h = "";
+  if (a.w) {
+    const dots = (DOTS[a.w] || []).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7.5" fill="#ff0" stroke="#000" stroke-width="1"/>`).join("");
+    h += `<svg viewBox="0 0 811 433" role="img" aria-label="${esc(st.map)}"><image href="img/maps/${a.w}.png" width="811" height="433"/>${dots}`
+      + `<circle cx="${a.hi[0]}" cy="${a.hi[1]}" r="15" fill="#f0f" stroke="#000" stroke-width="2"/></svg>`;
+  }
+  h += `<div class="loc">${L.location}: <b>${esc(st.map)}</b> · ${lang === "ru" ? st.w : st.w_en}, ${esc(st.region)}</div>`;
+  const mobs = (a.mobs || []).map(([n, f]) => `<div class="mob"><img src="img/mobs/${encodeURIComponent(f)}" alt="">${esc(n)}</div>`).join("");
+  h += `<div class="media"><img class="shot" src="img/${st.id}.png" width="120" height="120" alt="">${mobs ? `<div class="mobs">${mobs}</div>` : ""}</div>`;
+  return h;
+}
 function showTip(el, x, y){
-  const [a, b, c, img] = el.dataset.tip.split("|");
-  tip.innerHTML = `<b>${a}</b>`
-    + (img ? `<img src="img/${img}.png" width="160" height="160" alt="">` : "")
+  const [a, b, c, sid] = el.dataset.tip.split("|");
+  tip.innerHTML = `<b>${a}</b>` + (sid ? starMedia(BY_ID[sid]) : "")
     + (b ? `<div>${b}</div>` : "") + (c ? `<div class="t">${c}</div>` : "")
-    + (img ? `<div class="src">${L.imgsrc}</div>` : "");
+    + (sid ? `<div class="src">${L.imgsrc}</div>` : "");
   tip.hidden = false;
   const r = tip.getBoundingClientRect();
   tip.style.left = Math.max(8, Math.min(x + 14, innerWidth - r.width - 8)) + "px";
