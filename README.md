@@ -19,7 +19,7 @@ The page picks English or Russian from your browser language; the EN/RU switch i
 
 A constellation only completes when someone clicks its star after enough characters are counted. The page flags those as "click to complete".
 
-Hover or tap a star ID or a cell for the map, the exact star position, the original requirement text and the star chart points.
+Hover or tap a star ID or a cell for a screenshot of where the star is, the map, the original requirement text and the star chart points.
 
 ## How to get your save
 
@@ -27,7 +27,7 @@ Any raw save export with the `SSprog`, `Lv0_0`…`Lv0_N` and `CharacterClass_N` 
 
 ## How it works
 
-In the save, `SSprog[i] = [letters, complete]`. Each letter is a character slot: `_` is the first character, `a` the second, … `i` the tenth. Requirements, thresholds and point values come from the game's `StarQuests` list. Star positions are from [idleon.wiki/wiki/Star_Signs](https://idleon.wiki/wiki/Star_Signs).
+In the save, `SSprog[i] = [letters, complete]`. Each letter is a character slot: `_` is the first character, `a` the second, … `i` the tenth. Requirements, thresholds and point values come from the game's `StarQuests` list. Star positions and the screenshots in `img/` are from the [IdleOn MMO Wiki](https://idleon.wiki/wiki/Constellation_Locations). The screenshots are CC BY-NC 3.0 and are not covered by the MIT license; see [img/README.md](img/README.md).
 
 ## Building
 
