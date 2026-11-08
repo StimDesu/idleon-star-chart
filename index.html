@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IdleOn Star Chart</title>
+<meta name="description" content="Paste your Legends of Idleon save and see every constellation per character: done, ready to click, or still missing.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l4 9 10 1-7.5 7 2 10L16 24l-8.5 5 2-10L2 12l10-1z' fill='%23ffcb45'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one compact star-chart matrix — constellations down, characters across, world bands as dividers */
+:root{
+  --bg:#f3f4f8; --panel:#ffffff; --ink:#1b1f33; --muted:#666c86; --line:#dcdfea;
+  --gold:#b98200; --gold-bg:#fff1c7; --ok:#1f8a55; --ok-bg:#d9f2e4; --map:#c4571a; --map-bg:#fde3d2;
+  --no:#a8aec2; --unk:#7a6fb0; --unk-bg:#ebe8f7; --band:#e7e9f2; --done-row:#f6faf7;
+  --display:"Chakra Petch",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1020; --panel:#151a30; --ink:#e6e8f4; --muted:#9097b3; --line:#262c48;
+  --gold:#ffcb45; --gold-bg:#3b3112; --ok:#5fd394; --ok-bg:#143326; --map:#ff9a5c; --map-bg:#3d2414;
+  --no:#4a5072; --unk:#b3a8f0; --unk-bg:#252046; --band:#1c2240; --done-row:#121a28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1020; --panel:#151a30; --ink:#e6e8f4; --muted:#9097b3; --line:#262c48;
+  --gold:#ffcb45; --gold-bg:#3b3112; --ok:#5fd394; --ok-bg:#143326; --map:#ff9a5c; --map-bg:#3d2414;
+  --no:#4a5072; --unk:#b3a8f0; --unk-bg:#252046; --band:#1c2240; --done-row:#121a28; color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+h1{font-family:var(--display);font-weight:700;font-size:26px;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 small{font-family:var(--body);font-weight:400;font-size:14px;color:var(--muted);margin-left:8px}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.lang button{background:transparent;color:var(--muted);border-radius:0;padding:4px 10px;font:600 12px var(--mono)}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.input{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px}
+.input .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+textarea{width:100%;height:64px;resize:vertical;font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+button,.file{font:500 13px var(--body);background:var(--ink);color:var(--bg);border:0;border-radius:6px;padding:7px 12px;cursor:pointer}
+.ghost,.file{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.file input{position:absolute;opacity:0;width:1px;height:1px}
+button:focus-visible,.file:focus-within,textarea:focus-visible,label.chk:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.msg{font-size:13px;color:var(--muted)} .msg.err{color:var(--map)}
+.stats{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline}
+.stat b{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:12.5px;margin-left:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);align-items:center}
+.legend i{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-style:normal;font-size:11px;margin-right:4px;vertical-align:-4px}
+label.chk{font-size:13px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.tablebox{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:0;border-bottom:1px solid var(--line);text-align:center}
+thead th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:500;font-size:12px;color:var(--muted);vertical-align:bottom;padding:6px 2px}
+thead th.ch{writing-mode:vertical-rl;transform:rotate(180deg);text-align:left;height:118px;white-space:nowrap;padding:6px 0;cursor:default}
+thead th.ch .cl{opacity:.75;font-size:11px}
+th.l,td.l{text-align:left}
+td.id{font-family:var(--mono);font-weight:600;padding:3px 8px;white-space:nowrap;cursor:help;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+td.rq{padding:3px 8px;min-width:180px;max-width:300px;font-size:12.5px;cursor:help}
+td.rq .mp{color:var(--muted);font-size:11.5px}
+td.pg{font-family:var(--mono);font-size:12px;padding:3px 8px;white-space:nowrap}
+td.st{padding:3px 6px;white-space:nowrap}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;letter-spacing:.02em}
+.chip.done{background:var(--ok-bg);color:var(--ok)} .chip.ready{background:var(--gold);color:var(--panel)}
+.chip.click{background:var(--gold-bg);color:var(--gold)} .chip.open{background:var(--band);color:var(--muted)}
+td.c{width:30px;min-width:28px}
+td.c span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:5px;font-size:12px;font-weight:600;cursor:help}
+.s-ok{background:var(--ok-bg);color:var(--ok)} .s-click{background:var(--gold-bg);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.s-map{background:var(--map-bg);color:var(--map);box-shadow:inset 0 0 0 1px var(--map)} .s-unk{background:var(--unk-bg);color:var(--unk)}
+.s-no{color:var(--no)} .s-na{color:var(--no);opacity:.6}
+tr.band td{background:var(--band);text-align:left;padding:5px 8px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.04em}
+tr.band td small{font-family:var(--body);font-weight:400;color:var(--muted);letter-spacing:0;margin-left:6px}
+tr.isdone td{background:var(--done-row)} tr.isdone td.rq{color:var(--muted)}
+#tip{position:fixed;z-index:20;max-width:300px;background:var(--ink);color:var(--bg);border-radius:6px;padding:8px 10px;font-size:12.5px;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgb(0 0 0 / .25)}
+#tip b{font-family:var(--display);font-size:14px}
+#tip .t{opacity:.75;font-size:11.5px}
+.foot{font-size:12.5px;color:var(--muted);max-width:80ch;margin:0}
+.foot a{color:inherit}
+@media (prefers-reduced-motion:no-preference){td.c span{transition:transform .1s}td.c span:hover{transform:scale(1.15)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span data-i="title"></span> <small data-i="subtitle"></small></h1>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button>
+    </div>
+  </header>
+
+  <div class="input">
+    <textarea id="save" spellcheck="false" aria-label="Save JSON"></textarea>
+    <div class="row">
+      <button id="go" type="button" data-i="parse"></button>
+      <label class="file"><span data-i="open"></span><input id="file" type="file" accept=".json,.txt,application/json,text/plain"></label>
+      <button id="demo" type="button" class="ghost" data-i="demo"></button>
+      <span id="msg" class="msg" role="status"></span>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span><i class="s-ok">✓</i><span data-i="lg_ok"></span></span>
+    <span><i class="s-click">★</i><span data-i="lg_click"></span></span>
+    <span><i class="s-map">⇥</i><span data-i="lg_map"></span></span>
+    <span><i class="s-unk">?</i><span data-i="lg_unk"></span></span>
+    <span><i class="s-no">×</i><span data-i="lg_no"></span></span>
+    <span><i class="s-na">·</i><span data-i="lg_na"></span></span>
+    <label class="chk"><input type="checkbox" id="hideDone"><span data-i="hide"></span></label>
+  </div>
+
+  <div class="tablebox"><table id="tbl"></table></div>
+
+  <p class="foot" data-i="foot"></p>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const STARS = [{"i": 0, "id": "A-1", "w": "Мир 1", "region": "Blunder Hills", "map": "Blunder Hills", "need": 4, "pts": 3, "req": "Ур. 30", "loc": "Справа вверху, на дереве (иногда закрыта баффами или подсказкой квестов)", "en": "Reach Lv 30 on four players", "k": "lv", "min": 30, "req_en": "Reach Lv 30", "loc_en": "Top right, up in the tree (buffs or the quest helper can cover it)", "w_en": "World 1"}, {"i": 1, "id": "A-2", "w": "Мир 1", "region": "Blunder Hills", "map": "Where the Branches End", "need": 1, "pts": 3, "req": "AFK здесь 1+ ч", "loc": "Справа внизу, на ветке", "en": "AFK here for 1+ hours.", "k": "afk", "h": 1, "req_en": "AFK here for 1+ h", "loc_en": "Bottom right, on the branch", "w_en": "World 1"}, {"i": 2, "id": "A-3", "w": "Мир 1", "region": "Blunder Hills", "map": "Valley Of The Beans", "need": 4, "pts": 3, "req": "Дойти до звезды", "loc": "На бревне у портала к слаймам", "en": "Reach this star on 4 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "On the log by the portal to the slimes", "w_en": "World 1"}, {"i": 3, "id": "A-4", "w": "Мир 1", "region": "Blunder Hills", "map": "Tucked Away", "need": 3, "pts": 4, "req": "Дойти до звезды", "loc": "Справа внизу, левый край платформы", "en": "Reach this star on 3 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Bottom right, left end of the platform", "w_en": "World 1"}, {"i": 4, "id": "A-5", "w": "Мир 1", "region": "Blunder Hills", "map": "The Office", "need": 3, "pts": 5, "req": "Убить Dr. Defecaus", "loc": "Нижняя платформа, слева", "en": "Defeat Dr. Defecaus on 3 players", "k": "ev", "req_en": "Defeat Dr. Defecaus", "loc_en": "Bottom platform, left side", "w_en": "World 1"}, {"i": 5, "id": "A-6", "w": "Мир 1", "region": "Blunder Hills", "map": "Freefall Caverns", "need": 1, "pts": 3, "req": "Дойти любым лучником", "loc": "Верхняя платформа с порталом, слева", "en": "Reach this star as any Archer Class", "k": "cls", "lo": 18, "hi": 30, "req_en": "Reach it as any Archer", "loc_en": "Top platform with the portal, left side", "w_en": "World 1"}, {"i": 6, "id": "A-7", "w": "Мир 1", "region": "Blunder Hills", "map": "Winding Willows", "need": 2, "pts": 3, "req": "AFK здесь 2+ ч", "loc": "Нижняя правая платформа", "en": "AFK here for 2+ hours on 2 players", "k": "afk", "h": 2, "req_en": "AFK here for 2+ h", "loc_en": "Bottom right platform", "w_en": "World 1"}, {"i": 7, "id": "A-8", "w": "Мир 1", "region": "Blunder Hills", "map": "Dewdrop Colosseum", "need": 3, "pts": 4, "req": "Пройти Колизей", "loc": "Нижняя платформа, крайний правый угол", "en": "Clear the colosseum on 3 players", "k": "ev", "req_en": "Clear the Colosseum", "loc_en": "Bottom platform, far right corner", "w_en": "World 1"}, {"i": 8, "id": "A-9", "w": "Мир 1", "region": "Blunder Hills", "map": "End Of The Road", "need": 3, "pts": 5, "req": "Убить Амарока быстрее 20 с", "loc": "Платформа Амарока, справа", "en": "Defeat Amarok in under 20 seconds on 3 players", "k": "ev", "req_en": "Defeat Amarok in under 20 s", "loc_en": "Amarok's platform, right side", "w_en": "World 1"}, {"i": 9, "id": "A-10", "w": "Мир 1", "region": "Blunder Hills", "map": "Echoing Egress", "need": 1, "pts": 4, "req": "Дойти любым магом", "loc": "Справа над нижним порталом", "en": "Reach this star as any Mage Class", "k": "cls", "lo": 31, "hi": 43, "req_en": "Reach it as any Mage", "loc_en": "Right above the lower portal", "w_en": "World 1"}, {"i": 12, "id": "B-1", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "The Mimic Hole", "need": 3, "pts": 4, "req": "Дойти до звезды", "loc": "Левый нижний угол карты, на стене", "en": "Reach this star on 3 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Bottom left corner of the map, on the wall", "w_en": "World 2"}, {"i": 13, "id": "B-2", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "Faraway Piers", "need": 1, "pts": 4, "req": "Дойти любым магом", "loc": "Справа от магазина, под настилом", "en": "Reach this star as any Mage Class", "k": "cls", "lo": 31, "hi": 43, "req_en": "Reach it as any Mage", "loc_en": "Right of the shop, under the deck", "w_en": "World 2"}, {"i": 14, "id": "B-3", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "The Grandioso Canyon", "need": 3, "pts": 4, "req": "AFK здесь 4+ ч", "loc": "Нижняя правая платформа, слева", "en": "AFK here for 4+ hours on 3 players", "k": "afk", "h": 4, "req_en": "AFK here for 4+ h", "loc_en": "Bottom right platform, left side", "w_en": "World 2"}, {"i": 15, "id": "B-4", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "Slamabam Straightaway", "need": 4, "pts": 5, "req": "Дойти до звезды", "loc": "Правый нижний угол карты", "en": "Reach this star on 4 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Bottom right corner of the map", "w_en": "World 2"}, {"i": 16, "id": "B-5", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "Sandstone Colosseum", "need": 4, "pts": 3, "req": "Пройти Колизей", "loc": "Средняя левая платформа, справа от верёвки", "en": "Clear the colosseum on 4 players", "k": "ev", "req_en": "Clear the Colosseum", "loc_en": "Middle left platform, right of the rope", "w_en": "World 2"}, {"i": 17, "id": "B-6", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "Efaunt's Tomb", "need": 1, "pts": 5, "req": "Убить Эфаунта новичком", "loc": "Под крайним левым кактусом (секретный класс тоже считается новичком)", "en": "Defeat Efaunt as any Beginner Class", "k": "beg", "req_en": "Defeat Efaunt as a Beginner", "loc_en": "Under the leftmost cactus (the secret class line counts as Beginner)", "w_en": "World 2"}, {"i": 18, "id": "B-7", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "Up Up Down Down", "need": 3, "pts": 3, "req": "AFK здесь 8+ ч", "loc": "На кактусе рядом с Loominadi", "en": "AFK here for 8+ hours on 3 players", "k": "afk", "h": 8, "req_en": "AFK here for 8+ h", "loc_en": "On the cactus next to Loominadi", "w_en": "World 2"}, {"i": 19, "id": "B-8", "w": "Мир 2", "region": "Yum-Yum Desert", "map": "YumYum Grotto", "need": 4, "pts": 4, "req": "Ур. 65", "loc": "Под порталом на рыбалку", "en": "Reach Lv 65 on four players", "k": "lv", "min": 65, "req_en": "Reach Lv 65", "loc_en": "Under the fishing portal", "w_en": "World 2"}, {"i": 23, "id": "C-1", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Frostbite Towndra", "need": 6, "pts": 6, "req": "Ур. 90", "loc": "Под порталом в мир 4", "en": "Reach Lv 90 on 6 players", "k": "lv", "min": 90, "req_en": "Reach Lv 90", "loc_en": "Under the World 4 portal", "w_en": "World 3"}, {"i": 24, "id": "C-2", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Steep Sheep Ledge", "need": 4, "pts": 4, "req": "Убить овцу голыми руками", "loc": "Правый нижний угол", "en": "Defeat a sheepie barehanded on four players", "k": "ev", "req_en": "Defeat a sheepie barehanded", "loc_en": "Bottom right corner", "w_en": "World 3"}, {"i": 25, "id": "C-3", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Trappers Folley", "need": 5, "pts": 4, "req": "Трапперство 15 (засчитывается при входе на карту)", "loc": "Платформа между плакатами Pingy и Dung Beat", "en": "Reach Lv 15 trapping on five players", "k": "skill", "s": 7, "min": 15, "req_en": "Trapping Lv 15 (counts when you enter the map)", "loc_en": "Platform between the Pingy and Dung Beat posters", "w_en": "World 3"}, {"i": 26, "id": "C-4", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Refrigeration Station", "need": 3, "pts": 4, "req": "AFK здесь 16+ ч", "loc": "Левый нижний угол, сливается с фоном", "en": "AFK for 16+ hrs on 3 players", "k": "afk", "h": 16, "req_en": "AFK here for 16+ h", "loc_en": "Bottom left corner, blends into the background", "w_en": "World 3"}, {"i": 27, "id": "C-5", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Rollin' Tundra", "need": 4, "pts": 5, "req": "Дойти до 11-й волны", "loc": "Справа на нижней платформе, у правого портала", "en": "Reach wave 11 on 4 players", "k": "ev", "req_en": "Reach wave 11", "loc_en": "Right side of the bottom platform, near the right portal", "w_en": "World 3"}, {"i": 28, "id": "C-6", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Thermonuclear Climb", "need": 9, "pts": 5, "req": "AFK здесь 10+ ч", "loc": "Правый нижний угол", "en": "AFK for 10+ hrs on 9 players", "k": "afk", "h": 10, "req_en": "AFK here for 10+ h", "loc_en": "Bottom right corner", "w_en": "World 3"}, {"i": 29, "id": "C-7", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Crystal Basecamp", "need": 6, "pts": 6, "req": "Дойти до звезды", "loc": "Правый верхний угол", "en": "Reach this star on 6 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Top right corner", "w_en": "World 3"}, {"i": 30, "id": "C-8", "w": "Мир 3", "region": "Frostbite Tundra", "map": "Hell Hath Frozen Over", "need": 4, "pts": 5, "req": "Убить Bloodbone", "loc": "У самого правого края, сливается с фоном", "en": "Kill a bloodbone on 4 players", "k": "ev", "req_en": "Kill a Bloodbone", "loc_en": "Far right edge, blends into the background", "w_en": "World 3"}, {"i": 34, "id": "D-1", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Outer World Town", "need": 8, "pts": 5, "req": "Ур. 120", "loc": "Левый верхний угол, на крыше кухни", "en": "Reach Lv 120 on 8 players", "k": "lv", "min": 120, "req_en": "Reach Lv 120", "loc_en": "Top left corner, on the kitchen roof", "w_en": "World 4"}, {"i": 35, "id": "D-2", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Spaceway Raceway", "need": 3, "pts": 3, "req": "Всех грибов до респауна", "loc": "Под порталом на следующую карту", "en": "Defeat all mushrooms before any respawn on 3 players", "k": "ev", "req_en": "Defeat all mushrooms before any respawn", "loc_en": "Under the portal to the next map", "w_en": "World 4"}, {"i": 36, "id": "D-3", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Donut Drive-In", "need": 4, "pts": 4, "req": "Кулинария 15 (засчитывается при входе на карту)", "loc": "Под Oinkin", "en": "Reach Lv 15 Cooking on 4 players", "k": "skill", "s": 10, "min": 15, "req_en": "Cooking Lv 15 (counts when you enter the map)", "loc_en": "Under Oinkin", "w_en": "World 4"}, {"i": 37, "id": "D-4", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Wurm Highway", "need": 3, "pts": 4, "req": "Дойти до звезды", "loc": "Левый край самой нижней платформы", "en": "Reach this star on 3 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Left side of the lowest platform", "w_en": "World 4"}, {"i": 38, "id": "D-5", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Cocoa Tunnel", "need": 4, "pts": 3, "req": "Всех чокки до респауна", "loc": "Справа на верхней платформе", "en": "Defeat all choccies before any respawn on 4 players", "k": "ev", "req_en": "Defeat all choccies before any respawn", "loc_en": "Right side of the top platform", "w_en": "World 4"}, {"i": 39, "id": "D-6", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Standstill Plains", "need": 4, "pts": 3, "req": "Дойти до звезды", "loc": "Под порталом на следующую карту", "en": "Reach this star on 4 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Under the portal to the next map", "w_en": "World 4"}, {"i": 40, "id": "D-7", "w": "Мир 4", "region": "Hyperion Nebula", "map": "Shelled Shores", "need": 4, "pts": 3, "req": "Мегакрит по Clammy", "loc": "Справа на нижней левой платформе", "en": "Hit a megacrit on a Clammy on 4 players", "k": "ev", "req_en": "Megacrit a Clammy", "loc_en": "Right side of the bottom left platform", "w_en": "World 4"}, {"i": 44, "id": "E-1", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "Magma Rivertown", "need": 10, "pts": 5, "req": "Ур. 200", "loc": "Справа от платформы с артефактами", "en": "Reach Lv 200 on 10 players", "k": "lv", "min": 200, "req_en": "Reach Lv 200", "loc_en": "Right of the artifact platform", "w_en": "World 5"}, {"i": 45, "id": "E-2", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "Niagrilled Falls", "need": 6, "pts": 4, "req": "Всех maccies до респауна", "loc": "На потоке лавы над нижней платформой", "en": "Defeat all maccies before any respawn on 6 players", "k": "ev", "req_en": "Defeat all maccies before any respawn", "loc_en": "On a lava flow above the bottom platform", "w_en": "World 5"}, {"i": 46, "id": "E-3", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "Cracker Jack Lake", "need": 10, "pts": 3, "req": "Дойти до звезды", "loc": "Слева на средней верхней платформе", "en": "Reach this star on 10 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Left side of the middle top platform", "w_en": "World 5"}, {"i": 47, "id": "E-4", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "Erruption River", "need": 3, "pts": 4, "req": "Собрать dandielogs", "loc": "Под деревом", "en": "Successfully gather dandielogs on 3 players", "k": "ev", "req_en": "Gather dandielogs", "loc_en": "Under the tree", "w_en": "World 5"}, {"i": 48, "id": "E-5", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "OJ Bay", "need": 7, "pts": 5, "req": "Всех citringes до респауна", "loc": "Слева на верхней платформе", "en": "Defeat all citringes before any respawn on 7 players", "k": "ev", "req_en": "Defeat all citringes before any respawn", "loc_en": "Left side of the upper platform", "w_en": "World 5"}, {"i": 49, "id": "E-6", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "Miner Mole Outskirts", "need": 10, "pts": 5, "req": "Дойти до звезды", "loc": "Нижняя левая платформа", "en": "Reach this star on 10 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Bottom left platform", "w_en": "World 5"}, {"i": 50, "id": "E-7", "w": "Мир 5", "region": "Smolderin' Plateau", "map": "The Worm Nest", "need": 5, "pts": 8, "req": "100 червей за 100 с с входа на карту", "loc": "Середина нижней платформы", "en": "Defeat 100 Wurms in under 100 sec from entering the map, on 5 players", "k": "ev", "req_en": "100 Wurms within 100 s of entering", "loc_en": "Middle of the bottom platform", "w_en": "World 5"}, {"i": 54, "id": "F-1", "w": "Мир 6", "region": "Spirited Valley", "map": "Spirit Village", "need": 4, "pts": 7, "req": "Ур. 420 (и никому не рассказывать)", "loc": "Слева вверху в городе", "en": "Reach Lv 420 on 4 players, and keep this Constellation a secret... just a lil' secret between you and me...", "k": "lv", "min": 420, "req_en": "Reach Lv 420 (and keep it a secret)", "loc_en": "Top left of the town", "w_en": "World 6"}, {"i": 55, "id": "F-2", "w": "Мир 6", "region": "Spirited Valley", "map": "Gooble Goop Creek", "need": 3, "pts": 6, "req": "Не получить урона (нужно 28521 DEF)", "loc": "Справа на средней платформе", "en": "Take no damage on 3 players, you need 28521 DEF to be damageless", "k": "ev", "req_en": "Take no damage (needs 28521 DEF)", "loc_en": "Right side of the middle platform", "w_en": "World 6"}, {"i": 56, "id": "F-3", "w": "Мир 6", "region": "Spirited Valley", "map": "Irrigation Station", "need": 10, "pts": 6, "req": "Дойти до звезды", "loc": "Под лестницей", "en": "Reach this star on 10 players", "k": "cls", "lo": 0, "hi": 99, "req_en": "Reach this star", "loc_en": "Under the ladder", "w_en": "World 6"}, {"i": 57, "id": "F-4", "w": "Мир 6", "region": "Spirited Valley", "map": "Edge of the Valley", "need": 3, "pts": 6, "req": "Всех Woodlin без шлема и оружия", "loc": "Под порталом", "en": "Defeat all Woodlins without a helmet or weapon equipped on 3 players. You must enter the map without helmet or weapon.", "k": "ev", "req_en": "All Woodlins with no helmet or weapon", "loc_en": "Under the portal", "w_en": "World 6"}, {"i": 58, "id": "F-5", "w": "Мир 6", "region": "Spirited Valley", "map": "Lightway Path", "need": 4, "pts": 6, "req": "От левого портала к правому, не задев фонари", "loc": "В водопаде", "en": "Run from left portal to right portal without touching a lantern spirit, on 4 players. All mobs must be alive when you start.", "k": "ev", "req_en": "Left portal to right portal without touching a lantern", "loc_en": "In the waterfall", "w_en": "World 6"}, {"i": 59, "id": "F-6", "w": "Мир 6", "region": "Spirited Valley", "map": "Above the Clouds", "need": 5, "pts": 7, "req": "Убить Giant Leek Spirit", "loc": "Справа внизу от портала", "en": "Defeat a Giant Leek Spirit on 5 players", "k": "ev", "req_en": "Defeat a Giant Leek Spirit", "loc_en": "Bottom right of the portal", "w_en": "World 6"}, {"i": 60, "id": "F-7", "w": "Мир 6", "region": "Spirited Valley", "map": "Dozey Dogpark", "need": 5, "pts": 7, "req": "Собрать Effervescent Logs", "loc": "Середина средней платформы", "en": "Successfully gather Effervescent Logs on 5 players", "k": "ev", "req_en": "Gather Effervescent Logs", "loc_en": "Middle of the middle platform", "w_en": "World 6"}, {"i": 61, "id": "F-8", "w": "Мир 6", "region": "Spirited Valley", "map": "Yolkrock Basin", "need": 7, "pts": 8, "req": "Всех Royal Eggs до респауна", "loc": "Верхняя левая платформа", "en": "Defeat all Royal Eggs before any respawn on 7 players", "k": "ev", "req_en": "Defeat all Royal Eggs before any respawn", "loc_en": "Top left platform", "w_en": "World 6"}, {"i": 62, "id": "F-9", "w": "Мир 6", "region": "Spirited Valley", "map": "Emperor's Castle Doorstep", "need": 8, "pts": 9, "req": "100 Samurai Guardians за 100 с", "loc": "Середина нижней левой платформы", "en": "Defeat 100 Samurai Guardians within 100 seconds of entering the map, on 8 players", "k": "ev", "req_en": "100 Samurai Guardians within 100 s", "loc_en": "Middle of the bottom left platform", "w_en": "World 6"}];
+const SAMPLE = {"SSprog": "[[\"_abc\", 1], [\"_\", 1], [\"_abc\", 1], [\"_ab\", 1], [\"_a\", 0], [\"_\", 1], [\"b_\", 1], [\"_ca\", 1], [\"_fabcde\", 1], [\"\", 0], [\"\", 0], [\"\", 0], [\"_ab\", 1], [\"\", 0], [\"_bdaec\", 1], [\"_ab\", 0], [\"_ab\", 0], [\"\", 0], [\"_bdaecf\", 1], [\"_ab\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"_ab\", 0], [\"g_ab\", 1], [\"_h\", 0], [\"_ef\", 1], [\"\", 0], [\"ec\", 0], [\"_ab\", 0], [\"dfcabhi_\", 1], [\"\", 0], [\"\", 0], [\"\", 0], [\"_ab\", 0], [\"e_ghabcdfi\", 1], [\"e\", 0], [\"_ab\", 1], [\"_iab\", 1], [\"_\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"_\", 0], [\"_\", 0], [\"_\", 0], [\"\", 0], [\"g\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0], [\"\", 0]]", "Lv0_0": [403, 15, 74, 15, 18, 73, 14, 38, 71, 26, 16, 20, 6, 3, 1, 17], "CharacterClass_0": 25, "Lv0_1": [380, 68, 60, 6, 1, 58, 4, 20, 60, 1, 1, 20, 7, 3, 1, 17], "CharacterClass_1": 12, "Lv0_2": [381, 3, 62, 63, 1, 61, 4, 20, 51, 1, 1, 20, 45, 3, 1, 17], "CharacterClass_2": 36, "Lv0_3": [378, 3, 62, 67, 2, 55, 10, 20, 51, 16, 1, 20, 5, 3, 1, 17], "CharacterClass_3": 34, "Lv0_4": [383, 3, 61, 1, 1, 60, 55, 20, 51, 1, 1, 20, 8, 3, 1, 17], "CharacterClass_4": 22, "Lv0_5": [381, 3, 65, 1, 54, 55, 2, 20, 57, 1, 35, 20, 14, 3, 1, 17], "CharacterClass_5": 10, "Lv0_6": [385, 32, 60, 33, 47, 55, 32, 20, 57, 1, 1, 20, 13, 3, 1, 17], "CharacterClass_6": 3, "Lv0_7": [425, 1, 62, 1, 1, 52, 4, 24, 50, 1, 1, 20, 18, 3, 1, 17], "CharacterClass_7": 22, "Lv0_8": [347, 1, 64, 1, 3, 50, 3, 20, 46, 1, 1, 20, 36, 3, 1, 17], "CharacterClass_8": 34, "Lv0_9": [387, 1, 58, 1, 2, 49, 4, 20, 52, 1, 1, 20, 21, 3, 9, 17], "CharacterClass_9": 12};
+const T = {
+  en: {
+    title:"IdleOn Star Chart", subtitle:"constellations per character",
+    placeholder:"Paste your save JSON here (Raw data from IdleOn Efficiency, or any export with the SSprog and Lv0_0… keys)",
+    parse:"Read save", open:"Open file…", demo:"Show example",
+    lg_ok:"counted", lg_click:"requirement met, click the star", lg_map:"requirement met, enter the map",
+    lg_unk:"event, can't be checked from the save", lg_no:"requirement not met", lg_na:"constellation complete", hide:"hide complete",
+    th_star:"Star", th_req:"Requirement", th_have:"Have", th_status:"Status",
+    st_done:"complete", st_ready:"click to complete", st_click:"no fighting needed", st_open:n=>`${n} more needed`,
+    s_done:"constellations complete", s_pts:"star chart points", s_click:"can be finished without fighting",
+    players:n=>`${n} char.`, pts:"pts", letter:"letter", lv:"lv",
+    c_ok:"Counted", c_na:"Constellation already complete",
+    c_lv_ok:(l,m)=>`Level ${l} ≥ ${m}: walk up and click the star`, c_lv_no:(l,m)=>`Level ${l}, needs ${m}`,
+    c_any:"Walk up to the star and click it", c_cls_ok:c=>`${c} fits: walk up and click the star`, c_cls_no:c=>`${c} is the wrong class`,
+    c_sk_ok:(s,v,m)=>`${s} ${v} ≥ ${m}: just enter the map`, c_sk_no:(s,v,m)=>`${s} ${v}, needs ${m}`,
+    trap:"Trapping", cook:"Cooking",
+    c_beg_ok:c=>`${c} fits: defeat Efaunt`, c_beg_no:c=>`${c} is not a Beginner`,
+    c_afk:h=>`Claim a single AFK session of ${h}+ h on this map`, c_ev:"Event: counts the moment you do it",
+    char:n=>`Character ${n}`,
+    e_nokey:"There is no SSprog key in this JSON. Paste the full raw save export.", e_nochar:"No characters found (keys Lv0_0, Lv0_1…).",
+    e_fail:"Couldn't read the save: ", ok_n:n=>`Read ${n} characters.`, ok_demo:"Example save with 10 characters.", ok_saved:"Loaded the last save you pasted.",
+    foot:'A character is counted only when they click the star (level and "reach this star"), enter the map (Trapping and Cooking), claim AFK on that map, or do the event. The constellation itself also completes on a star click once enough characters are counted. Star names and locations: <a href="https://idleon.wiki/wiki/Star_Signs" target="_blank" rel="noopener">idleon.wiki/wiki/Star_Signs</a>; requirements come from the game code. Your save never leaves the browser. <a href="https://github.com/StimDesu/idleon-star-chart" target="_blank" rel="noopener">Source on GitHub</a>.'
+  },
+  ru: {
+    title:"Звёздная карта IdleOn", subtitle:"созвездия по персонажам",
+    placeholder:"Вставьте сюда JSON сохранения (Raw data из IdleOn Efficiency или любой экспорт с ключами SSprog, Lv0_0…)",
+    parse:"Разобрать", open:"Открыть файл…", demo:"Показать пример",
+    lg_ok:"засчитан", lg_click:"условие есть, кликнуть звезду", lg_map:"условие есть, зайти на карту",
+    lg_unk:"событие, по сохранению не проверить", lg_no:"условие не выполнено", lg_na:"созвездие собрано", hide:"скрыть собранные",
+    th_star:"Звезда", th_req:"Требование", th_have:"Есть", th_status:"Статус",
+    st_done:"собрано", st_ready:"кликнуть, чтобы закрыть", st_click:"закрывается без боёв", st_open:n=>`не хватает ${n}`,
+    s_done:"созвездий собрано", s_pts:"очков звёздной карты", s_click:"можно закрыть без боёв",
+    players:n=>`${n} перс.`, pts:"очк.", letter:"буква", lv:"ур.",
+    c_ok:"Засчитан", c_na:"Созвездие уже собрано",
+    c_lv_ok:(l,m)=>`Уровень ${l} ≥ ${m}: подойти и кликнуть звезду`, c_lv_no:(l,m)=>`Уровень ${l}, нужен ${m}`,
+    c_any:"Подойти к звезде и кликнуть", c_cls_ok:c=>`${c} подходит: подойти и кликнуть звезду`, c_cls_no:c=>`${c} не подходит по классу`,
+    c_sk_ok:(s,v,m)=>`${s} ${v} ≥ ${m}: просто зайти на карту`, c_sk_no:(s,v,m)=>`${s} ${v}, нужно ${m}`,
+    trap:"Трапперство", cook:"Кулинария",
+    c_beg_ok:c=>`${c} подходит: убить Эфаунта`, c_beg_no:c=>`${c} не новичок`,
+    c_afk:h=>`Собрать одну AFK-сессию от ${h} ч на этой карте`, c_ev:"Событие: засчитается, когда выполните",
+    char:n=>`Персонаж ${n}`,
+    e_nokey:"В JSON нет ключа SSprog. Нужен полный сырой экспорт сохранения.", e_nochar:"Не нашёл персонажей (ключи Lv0_0, Lv0_1…).",
+    e_fail:"Не получилось разобрать: ", ok_n:n=>`Разобрано: ${n} персонажей.`, ok_demo:"Пример сохранения с 10 персонажами.", ok_saved:"Загружено последнее вставленное сохранение.",
+    foot:'Персонаж засчитывается, только когда кликнет по звезде (уровень и «дойти до звезды»), зайдёт на карту (трапперство и кулинария), соберёт AFK на этой карте или выполнит событие. Само созвездие закрывается тоже кликом по звезде, когда набралось нужное число персонажей. Названия и места звёзд: <a href="https://idleon.wiki/wiki/Star_Signs" target="_blank" rel="noopener">idleon.wiki/wiki/Star_Signs</a>, требования из кода игры. Сохранение никуда не отправляется. <a href="https://github.com/StimDesu/idleon-star-chart" target="_blank" rel="noopener">Исходники на GitHub</a>.'
+  }
+};
+const CLASS = "0 BEGINNER JOURNEYMAN MAESTRO VOIDWALKER INFINILYTE RAGE_BASICS WARRIOR BARBARIAN SQUIRE BLOOD_BERSERKER NOPE DIVINE_KNIGHT NOPE DEATH_BRINGER FILLER ROYAL_GUARDIAN FILLER CALM_BASICS ARCHER BOWMAN HUNTER SIEGE_BREAKER NOPE NOPE BEAST_MASTER FILLER FILLER FILLER WIND_WALKER SAVVY_BASICS MAGE WIZARD SHAMAN ELEMENTAL_SORCERER SPIRITUAL_MONK BUBONIC_CONJUROR NOPE FILLER FILLER ARCANE_CULTIST".split(" ");
+const LETTERS = "_abcdefghijklmnopqrstuvwxyz";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const titleCase = s => s.toLowerCase().split("_").map(w => w[0].toUpperCase()+w.slice(1)).join(" ");
+const asArr = v => typeof v === "string" ? JSON.parse(v) : v;
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+
+let lang = store.get("ss-lang") || ((navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"]).some(l => /^ru\b/i.test(l)) ? "ru" : "en");
+let L = T[lang];
+let current = null, lastMsg = null;
+
+function applyLang(){
+  L = T[lang];
+  document.documentElement.lang = lang;
+  document.title = L.title;
+  document.querySelectorAll("[data-i]").forEach(el => { const v = L[el.dataset.i]; if (el.dataset.i === "foot") el.innerHTML = v; else el.textContent = v; });
+  $("#save").placeholder = L.placeholder;
+  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  if (lastMsg) showMsg(...lastMsg);
+  if (current) render(current);
+}
+
+function parseSave(text){
+  let o = JSON.parse(text.trim());
+  if (o && o.data && !o.SSprog) { const names = o.charNames || o.playerNames; o = Object.assign({}, o.data); if (names && !o.playerNames) o.playerNames = names; }
+  if (!o || !o.SSprog) throw new Error("nokey");
+  const ss = asArr(o.SSprog);
+  const chars = [];
+  for (let n = 0; ("Lv0_" + n) in o; n++) {
+    chars.push({ name: (o.playerNames && o.playerNames[n]) || null, lv: asArr(o["Lv0_" + n]).map(Number), cls: Number(o["CharacterClass_" + n] ?? 0), letter: LETTERS[n] });
+  }
+  if (!chars.length) throw new Error("nochar");
+  return { ss, chars };
+}
+
+function cellState(st, str, done, c){
+  if (str.includes(c.letter)) return ["ok", "✓", L.c_ok];
+  if (done) return ["na", "·", L.c_na];
+  const lvl = c.lv[0] || 0, cn = titleCase(CLASS[c.cls] || "?");
+  switch (st.k) {
+    case "lv": return lvl >= st.min ? ["click","★",L.c_lv_ok(lvl, st.min)] : ["no","×",L.c_lv_no(lvl, st.min)];
+    case "cls":
+      if (st.lo === 0 && st.hi >= 99) return ["click","★",L.c_any];
+      return (c.cls >= st.lo && c.cls <= st.hi) ? ["click","★",L.c_cls_ok(cn)] : ["no","×",L.c_cls_no(cn)];
+    case "skill": { const v = c.lv[st.s] || 0, sk = st.s === 7 ? L.trap : L.cook;
+      return v >= st.min ? ["map","⇥",L.c_sk_ok(sk, v, st.min)] : ["no","×",L.c_sk_no(sk, v, st.min)]; }
+    case "beg": return c.cls < 5 ? ["unk","?",L.c_beg_ok(cn)] : ["no","×",L.c_beg_no(cn)];
+    case "afk": return ["unk","?",L.c_afk(st.h)];
+    default: return ["unk","?",L.c_ev];
+  }
+}
+
+function render(data){
+  const { ss, chars } = data, ru = lang === "ru";
+  const hide = $("#hideDone").checked;
+  const nm = (c, n) => c.name || L.char(n + 1);
+  let doneN = 0, pts = 0, ptsAll = 0, clickable = [];
+  let h = `<thead><tr><th class="l" style="padding-left:8px">${L.th_star}</th><th class="l">${L.th_req}</th><th>${L.th_have}</th><th class="l">${L.th_status}</th>`;
+  chars.forEach((c, n) => { h += `<th class="ch" data-tip="${esc(nm(c,n))}|${esc(titleCase(CLASS[c.cls]||"?"))} · ${L.lv} ${c.lv[0]||0} · ${L.letter} «${c.letter}»">${n+1}. ${esc(nm(c,n))} <span class="cl">${c.lv[0]||0}</span></th>`; });
+  h += `</tr></thead><tbody>`;
+  let lastW = "";
+  for (const st of STARS) {
+    const prog = ss[st.i] || ["", 0];
+    const str = String(prog[0] || ""), done = prog[1] == 1;
+    ptsAll += st.pts; if (done) { doneN++; pts += st.pts; }
+    const cells = chars.map(c => cellState(st, str, done, c));
+    const have = [...str].filter(ch => LETTERS.includes(ch)).length;
+    const can = cells.filter(x => x[0] === "click" || x[0] === "map").length;
+    let chip;
+    if (done) chip = `<span class="chip done">${L.st_done}</span>`;
+    else if (have >= st.need) chip = `<span class="chip ready">${L.st_ready}</span>`;
+    else if (have + can >= st.need) { chip = `<span class="chip click">${L.st_click}</span>`; clickable.push(st.id); }
+    else chip = `<span class="chip open">${L.st_open(st.need - have)}</span>`;
+    const w = ru ? st.w : st.w_en;
+    if (w !== lastW) { lastW = w; h += `<tr class="band"><td colspan="${4 + chars.length}">${w}<small>${esc(st.region)}</small></td></tr>`; }
+    if (hide && done) continue;
+    const req = ru ? st.req : st.req_en, loc = ru ? st.loc : st.loc_en;
+    const tip = `${st.id} · ${st.map}|${loc}|${st.en} · ${st.pts} ${L.pts}`;
+    h += `<tr class="${done ? "isdone" : ""}"><td class="id l" data-tip="${esc(tip)}">${st.id}</td>`
+      + `<td class="rq l" data-tip="${esc(tip)}">${esc(req)}, ${L.players(st.need)} <span class="mp">· ${esc(st.map)}</span></td>`
+      + `<td class="pg">${have}/${st.need}</td><td class="st l">${chip}</td>`;
+    cells.forEach((x, n) => { h += `<td class="c"><span class="s-${x[0]}" data-tip="${esc(nm(chars[n],n))} · ${st.id}|${esc(x[2])}">${x[1]}</span></td>`; });
+    h += `</tr>`;
+  }
+  $("#tbl").innerHTML = h + `</tbody>`;
+  $("#stats").innerHTML =
+    `<div class="stat"><b>${doneN}/${STARS.length}</b><span>${L.s_done}</span></div>`
+  + `<div class="stat"><b>${pts}/${ptsAll}</b><span>${L.s_pts}</span></div>`
+  + `<div class="stat"><b>${clickable.length}</b><span>${L.s_click}${clickable.length ? ": " + clickable.join(", ") : ""}</span></div>`;
+}
+
+function showMsg(kind, key, arg){
+  lastMsg = [kind, key, arg];
+  const v = L[key];
+  $("#msg").className = kind === "err" ? "msg err" : "msg";
+  $("#msg").textContent = kind === "err" ? L.e_fail + (L[arg] || arg) : (typeof v === "function" ? v(arg) : v);
+}
+function load(text, key){
+  try { current = parseSave(text); render(current); showMsg("ok", key || "ok_n", current.chars.length); return true; }
+  catch (e) { showMsg("err", null, e.message === "nokey" ? "e_nokey" : e.message === "nochar" ? "e_nochar" : e.message); return false; }
+}
+$("#go").addEventListener("click", () => { const t = $("#save").value; if (load(t)) store.set("ss-save", t); });
+$("#save").addEventListener("paste", () => setTimeout(() => $("#go").click(), 0));
+$("#file").addEventListener("change", e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { $("#save").value = t; $("#go").click(); }); });
+$("#demo").addEventListener("click", () => { $("#save").value = ""; load(JSON.stringify(SAMPLE), "ok_demo"); });
+$("#hideDone").addEventListener("change", () => { if (current) render(current); store.set("ss-hide", $("#hideDone").checked ? "1" : ""); });
+document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => { lang = b.dataset.lang; store.set("ss-lang", lang); applyLang(); }));
+
+const tip = $("#tip");
+function showTip(el, x, y){
+  const [a, b, c] = el.dataset.tip.split("|");
+  tip.innerHTML = `<b>${a}</b>${b ? `<div>${b}</div>` : ""}${c ? `<div class="t">${c}</div>` : ""}`;
+  tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(x + 14, innerWidth - r.width - 8)) + "px";
+  tip.style.top = (y + 16 + r.height > innerHeight ? y - r.height - 10 : y + 16) + "px";
+}
+document.addEventListener("mouseover", e => { const el = e.target.closest("[data-tip]"); if (el) showTip(el, e.clientX, e.clientY); else tip.hidden = true; });
+document.addEventListener("mousemove", e => { const el = e.target.closest("[data-tip]"); if (el && !tip.hidden) showTip(el, e.clientX, e.clientY); });
+document.addEventListener("click", e => { const el = e.target.closest("[data-tip]"); if (el) { const r = el.getBoundingClientRect(); showTip(el, r.left, r.bottom - 10); } else tip.hidden = true; });
+addEventListener("scroll", () => tip.hidden = true, true);
+
+$("#hideDone").checked = !!store.get("ss-hide");
+applyLang();
+const saved = store.get("ss-save");
+if (!(saved && load(saved, "ok_saved"))) $("#demo").click();
+</script>
+</body>
+</html>
