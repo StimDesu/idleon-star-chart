@@ -23,7 +23,9 @@ Hover or tap a star ID or a cell for the world map with the location marked, the
 
 ## How to get your save
 
-Any raw save export with the `SSprog`, `Lv0_0`…`Lv0_N` and `CharacterClass_N` keys works, for example "Raw data" from IdleOn Efficiency. Both a flat export and `{ "data": {...}, "charNames": [...] }` are accepted. The save stays in your browser; nothing is uploaded.
+**By username.** Publish your profile on [idleonefficiency.com](https://www.idleonefficiency.com), then type your IdleOn username and press "Load by username". The page reads the published profile from `cdn.idleonefficiency.com/profiles/<username>.json`, the same way Cogtimizer does, so it shows your data as of the last time you published. A link with the username after `#` opens that profile directly: `https://stimdesu.github.io/idleon-star-chart/#YourName`.
+
+**By raw data.** Any raw save export with the `SSprog`, `Lv0_0`…`Lv0_N` and `CharacterClass_N` keys works, for example "Raw data" from IdleOn Efficiency. Both a flat export and `{ "data": {...}, "charNames": [...] }` are accepted. A pasted save stays in your browser; nothing is uploaded.
 
 ## How it works
 
